@@ -1,7 +1,7 @@
 #include "split.h"
 
 int main(int argc, char *argv[]) {
-    char sep[1024] = " 	";
+    char sep[1024] = " \t";
     if (argc > 1) {
         sep[0] = '\0';
         for (int i = 1; i < argc; i++) {
