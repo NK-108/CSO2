@@ -1,4 +1,4 @@
-CC = gcc
+CC = clang
 CFLAGS = -D_XOPEN_SOURCE=700 -Og -g -std=c11 -Wall -pedantic -fsanitize=address -ftrivial-auto-var-init=pattern
 
 all: split
