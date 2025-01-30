@@ -14,6 +14,14 @@ char **string_split(const char *input, const char *sep, int *num_words) {
     if (!result) return NULL;
 
     const char *p = input;
+    if (is_separator(*p, sep)) { // Leading separator, create an empty word
+        result[count] = malloc(1);
+        if (!result[count]) return NULL;
+        result[count][0] = '\0';
+        count++;
+        p++;
+    }
+
     while (*p) {
         while (*p && is_separator(*p, sep)) p++; // Skip consecutive separators
         if (*p) {
@@ -33,6 +41,18 @@ char **string_split(const char *input, const char *sep, int *num_words) {
             result[count][len] = '\0';
             count++;
         }
+    }
+
+    if (p > input && is_separator(*(p - 1), sep)) { // Trailing separator, create an empty word
+        if (count >= capacity) {
+            capacity *= 2;
+            result = realloc(result, capacity * sizeof(char *));
+            if (!result) return NULL;
+        }
+        result[count] = malloc(1);
+        if (!result[count]) return NULL;
+        result[count][0] = '\0';
+        count++;
     }
     
     *num_words = count;
