@@ -1,5 +1,8 @@
 #include "split.h"
 
+//checks current char against each char in sep string
+//returns 1 if true
+//returns 0 if false
 static int is_separator(char c, const char *sep) {
     while (*sep) {
         if (c == *sep++) return 1;
@@ -7,6 +10,8 @@ static int is_separator(char c, const char *sep) {
     return 0;
 }
 
+//separates input string into words divided by separator chars
+//creates empty word if input string starts or ends with separator
 char **string_split(const char *input, const char *sep, int *num_words) {
     int capacity = 10;
     int count = 0;
