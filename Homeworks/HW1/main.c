@@ -2,7 +2,8 @@
 
 int main(int argc, char *argv[]) {
     char sep[1024] = " \t";
-    if (argc > 1) {
+    
+    if (argc > 1) { //combine all separator arguments
         sep[0] = '\0';
         for (int i = 1; i < argc; i++) {
             strcat(sep, argv[i]);
@@ -11,7 +12,10 @@ int main(int argc, char *argv[]) {
 
     char input[4001];
     while (fgets(input, sizeof(input), stdin)) {
+
         if (input[0] == '.' && input[1] == '\n') break;
+
+        input[strcspn(input, "\n")] = '\0'; // Remove trailing newline
 
         int num_words = 0;
         char **words = string_split(input, sep, &num_words);
