@@ -99,11 +99,9 @@ int main(void) {
     while(1) {
         char *status = fgets(other_inbox, BOX_SIZE, stdin);
         if (status == NULL) {
-            if (ferror(stdin)) break;
-            if (feof(stdin)) {
-                kill(other_pid, SIGTERM);
-                break;
-            }
+            if (feof(stdin)) kill(other_pid, SIGTERM);
+            cleanup_inboxes();
+            return EXIT_SUCCESS;
         }
         kill(other_pid, SIGUSR1);
         while(other_inbox[0]) {
