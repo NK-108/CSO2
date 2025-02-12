@@ -14,12 +14,13 @@ int my_system(const char *command) {
         }
         else {
             // shell succeeded
-            _exit(0);
+            _exit(ex);
         }
     } 
     else if (childPID > 0) {
         // parent process
-        return waitpid(childPID, &wstatus, 0);
+        waitpid(childPID, &wstatus, 0);
+        return wstatus;
     }
     else {
         // fork failed
