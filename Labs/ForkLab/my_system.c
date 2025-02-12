@@ -1,13 +1,9 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#include "my_system.h"
 
 int my_system(const char *command) {
     
     pid_t childPID = fork();
+    int wstatus;
 
     if (childPID == 0) {
         // child process
@@ -18,12 +14,12 @@ int my_system(const char *command) {
         }
         else {
             // shell succeeded
-            _exit(ex);
+            _exit(0);
         }
     } 
     else if (childPID > 0) {
         // parent process
-        return waitpid(childPID);
+        return waitpid(childPID, &wstatus, 0);
     }
     else {
         // fork failed

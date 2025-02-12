@@ -1,4 +1,4 @@
-#include "my_system.c"
+#include "my_system.h"
 
 int main(int argc, const char *argv[]) {
     int a1 = my_system("sleep 1; echo hi");
