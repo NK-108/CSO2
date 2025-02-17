@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "my_system.h": "c"
+        "my_system.h": "c",
+        "gettimings.h": "c"
     }
 }

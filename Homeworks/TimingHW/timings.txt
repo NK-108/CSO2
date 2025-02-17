@@ -1,0 +1,5 @@
+Scenario 1: -162 ns
+Scenario 2: 397 ns
+Scenario 3: 1398126 ns
+Scenario 4: 2435 ns
+Scenario 5: 2926 ns
