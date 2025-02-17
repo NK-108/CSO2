@@ -18,8 +18,8 @@ void set_overhead() {
     int i = 0;
     time0 = nsecs();
     while((i - 1) < 0) {
-        time1 = nsecs();
         i++;
+        time1 = nsecs();
     }
     overhead = time1 - time0;
 
@@ -32,7 +32,7 @@ long long scenario1() {
 
     time0 = nsecs();
     int i = 0;
-    while ((time1 - time0) < (long long) 1000000000) {
+    while ((time1 - time0) < (long long) 500000000) {
         empty();
         time1 = nsecs();
         i++;
@@ -49,7 +49,7 @@ long long scenario2() {
 
     time0 = nsecs();
     int i = 0;
-    while ((time1 - time0) < (long long) 1000000000) {
+    while ((time1 - time0) < (long long) 500000000) {
         getppid();
         time1 = nsecs();
         i++;
@@ -66,7 +66,7 @@ long long scenario3() {
 
     time0 = nsecs();
     int i = 0;
-    while ((time1 - time0) < (long long) 1000000000) {
+    while ((time1 - time0) < (long long) 500000000) {
         system("/bin/true");
         time1 = nsecs();
         i++;
@@ -92,7 +92,7 @@ long long scenario4() {
 
     time0 = nsecs();
     int i = 0;
-    while ((time1 - time0) < (long long) 1000000000) {
+    while ((time1 - time0) < (long long) 500000000) {
         kill(pid, SIGUSR1);
         i++;
     }
@@ -113,7 +113,7 @@ long long scenario5() {
 
     time0 = nsecs();
     int i = 0;
-    while ((time1 - time0) < (long long) 1000000000) {
+    while ((time1 - time0) < (long long) 500000000) {
         kill(other_pid, SIGUSR2);
         sigwait(SIGUSR2, SIGUSR2);
         time1 = nsecs();
