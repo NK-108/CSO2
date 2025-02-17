@@ -5,7 +5,7 @@ Found overhead value of approximately 175 ns.
 Scenario 1: 
 - No Overhead Correction: 28 ns
 - Overhead Correction: -150 ns
-Scenario 2: 397 ns
+Scenario 2: 
 - No Overhead Correction: 602 ns
 - Overhead Correction: 435 ns
 Scenario 3:
@@ -14,6 +14,6 @@ Scenario 3:
 Scenario 4:
 - No Overhead Correction: 2611 ns
 - Overhead Correction: 2435 ns
-Scenario 5: 2926 ns
+Scenario 5: 
 - No Overhead Correction: 3101 ns
 - Overhead Correction: 2926 ns
