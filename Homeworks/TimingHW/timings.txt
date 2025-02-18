@@ -3,17 +3,21 @@ Calculated overhead as single interation and incrementation through while loop, 
 Found overhead value of approximately 175 ns.
 
 Scenario 1: 
-- No Overhead Correction: 28 ns
-- Overhead Correction: -150 ns
+- Overhead: 38 ns 
+- Duration: -16 ns
+
 Scenario 2: 
-- No Overhead Correction: 602 ns
-- Overhead Correction: 435 ns
+- Overhead: 44 ns
+- Duration: 72 ns
+
 Scenario 3:
-- No Overhead Correction: 1449067 ns
-- Overhead Correction: 1448887 ns
+- Overhead: 34 ns
+- Duration: 3168833 ns
+
 Scenario 4:
-- No Overhead Correction: 2611 ns
-- Overhead Correction: 2435 ns
-Scenario 5: 
-- No Overhead Correction: 3101 ns
-- Overhead Correction: 2926 ns
+- Overhead: 36 ns
+- Duration: 967 ns
+
+Scenario 5:
+- Overhead: 39 ns
+- Duration: 12262 ns

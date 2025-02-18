@@ -1,12 +1,13 @@
 #include "gettimings.h"
 
+long long time_null;
 long long time0;
 long long time1;
 long long duration;
 long long overhead;
 
-pid_t other_pid;
 pid_t this_pid;
+pid_t other_pid;
 
 int main(int argc, char* argv[]) {
     
@@ -43,8 +44,8 @@ int main(int argc, char* argv[]) {
             printf("Duration: %lld ns\n", duration);
             break;
         case -1:
-            this_pid = getpid();
-            other_pid;
+            pid_t this_pid = getpid();
+            pid_t other_pid;
             printf("PID: %d \n", this_pid);
             scanf("%d", &other_pid);
             break;
@@ -65,12 +66,12 @@ long long nsecs() {
 // calculate nanoseconds to do 'nothing'
 void set_overhead() {
     
-    int i = 0;
-    time0 = nsecs();
-    while((i - 1) < 0) {
-        i++;
-        time1 = nsecs();
+    for (int i = 0; i < 1000000; i++) {
+        nsecs();
     }
+
+    time0 = nsecs();
+    time1 = nsecs();
     overhead = time1 - time0;
 
     printf("Overhead: %lld ns\n", overhead);
@@ -80,14 +81,17 @@ long long scenario1() {
     
     set_overhead();
 
-    time0 = nsecs();
+    time_null = nsecs();
+
     int i = 0;
-    while ((time1 - time0) < (long long) 500000000) {
+    while ((time1 - time_null) < (long long) 500000000) {
+        time0 = nsecs();
         empty();
         time1 = nsecs();
+        duration += time1 - time0;
         i++;
     }
-    duration = (time1 - time0)/i - overhead;
+    duration = (duration/i) - overhead;
 
     return duration;
 
@@ -97,14 +101,17 @@ long long scenario2() {
 
     set_overhead();
 
-    time0 = nsecs();
+    time_null = nsecs();
+
     int i = 0;
-    while ((time1 - time0) < (long long) 500000000) {
+    while ((time1 - time_null) < (long long) 500000000) {
+        time0 = nsecs();
         getppid();
         time1 = nsecs();
+        duration += time1 - time0;
         i++;
     }
-    duration = (time1 - time0)/i - overhead;
+    duration = (duration/i) - overhead;
 
     return duration;
 
@@ -114,14 +121,17 @@ long long scenario3() {
 
     set_overhead();
 
-    time0 = nsecs();
+    time_null = nsecs();
+    
     int i = 0;
-    while ((time1 - time0) < (long long) 500000000) {
+    while ((time1 - time_null) < (long long) 500000000) {
+        time0 = nsecs();
         system("/bin/true");
         time1 = nsecs();
+        duration += time1 - time0;
         i++;
     }
-    duration = (time1 - time0)/i - overhead;
+    duration = (duration/i) - overhead;
 
     return duration;
 
@@ -140,13 +150,16 @@ long long scenario4() {
 
     pid_t pid = getpid();
 
-    time0 = nsecs();
+    time_null = nsecs();
+    
     int i = 0;
-    while ((time1 - time0) < (long long) 500000000) {
+    while ((time1 - time_null) < (long long) 500000000) {
+        time0 = nsecs();
         kill(pid, SIGUSR1);
+        duration += time1 - time0;
         i++;
     }
-    duration = (time1 - time0)/i - overhead;
+    duration = (duration/i) - overhead;
 
     return duration;
 
@@ -156,20 +169,22 @@ long long scenario5() {
 
     set_overhead();
 
-    pid_t this_pid = getpid();
-    pid_t other_pid;
+    this_pid = getpid();
     printf("PID: %d\n", this_pid);
     scanf("%d", &other_pid);
 
-    time0 = nsecs();
+    time_null = nsecs();
+
     int i = 0;
-    while ((time1 - time0) < (long long) 500000000) {
+    while ((time1 - time_null) < (long long) 500000000) {
+        time0 = nsecs();
         kill(other_pid, SIGUSR2);
         sigwait(SIGUSR2, SIGUSR2);
         time1 = nsecs();
+        duration += time1 - time0;
         i++;
     }
-    duration = (time1 - time0)/i - overhead;
+    duration = (duration/i) - overhead;
 
     return duration;
 }
