@@ -1,6 +1,4 @@
-Used while loop structure to test process until total duration exceeded half a second for all scenarios. 
-Calculated overhead as single interation and incrementation through while loop, with dummy arithmetic where appropriate.
-Found overhead value of approximately 175 ns.
+Ran nsecs() function 1000000 times to warm it up before performing overhead calculation, for which I got a value of approximately 40 ns.
 
 Scenario 1: 
 - Overhead: 38 ns 
@@ -20,4 +18,4 @@ Scenario 4:
 
 Scenario 5:
 - Overhead: 39 ns
-- Duration: 12262 ns
+- Duration: 1262 ns
