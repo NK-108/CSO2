@@ -34,7 +34,7 @@ void setup_test() {
     );
     // assuming testing_page_table initialized as above and ptbr points to it
     testing_page_table[3] = page_table_entry_for_page_3;
-    //printf("Expected Address = %zx\n", &data_for_page_3[0x45]);
+    printf("Expected Address = %zx\n", &data_for_page_3[0x45]);
 }
 
 void set_variables() {
@@ -86,10 +86,10 @@ size_t translate(size_t va) {
 
 }
 
-// int main(void) {
-//     size_t test_address = 0x3045;
-//     set_testing_ptbr();
-//     setup_test();
-//     size_t return_address = translate(test_address);
-//     printf("Translated Address = %zx\n", return_address);
-// }
+int main(void) {
+    size_t test_address = 0x3045;
+    set_testing_ptbr();
+    setup_test();
+    size_t return_address = translate(test_address);
+    printf("Translated Address = %zx\n", return_address);
+}
