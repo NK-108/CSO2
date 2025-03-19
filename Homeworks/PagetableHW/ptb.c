@@ -18,7 +18,7 @@ int VPN_SIZE = 0; // number of bits in complete vpn
 int VPN_BITS = 0; // number of bits for each vpn level
 size_t vpn[LEVELS]; // array of VPNs
 size_t po = 0; // page offset
-
+int allocations = 0;
 
 void set_vpn(size_t va) {
     
@@ -44,8 +44,6 @@ void set_vpn(size_t va) {
 }
 
 size_t translate(size_t va) {
-    printf("Virtual Address = %zx\n", va);
-
     // initialize variables if needed
     if (VPN_BITS == 0) {
         set_vpn(va);
@@ -64,6 +62,8 @@ size_t translate(size_t va) {
         }
     }
 
+    printf("Translation: Address %zx => Address = %zx\n", va, level_base | po);
+
     return level_base | po;
 
 }
@@ -75,6 +75,7 @@ void* allocate_page() {
         return NULL;
     }
     memset(ptr, 0, PAGE_SIZE);
+    allocations += 1;
     return ptr;
 }
 
@@ -87,40 +88,47 @@ void page_allocate(size_t va) {
     // Allocate the top-level page table if not already done
     if (ptbr == 0) {
         ptbr = (size_t)allocate_page();
+        printf("Allocation %d: ptbr = %zx\n", allocations, ptbr);
     }
 
-    size_t* current_table = (size_t*)ptbr;
-
-    // Iterate through levels
+    size_t* page_table = (size_t*) ptbr;
     for (int level = 0; level < LEVELS; ++level) {
-        size_t index = vpn[level];
-
-        // Check if the next-level table exists
-        if ((current_table[index] & 1) == 0) {
-            // Allocate the next-level page table
-            size_t* next_table = allocate_page();
-            if (next_table == NULL) {
-                printf("Failed to allocate next-level page table\n");
-                return;
-            }
-            //printf("Level %d Allocated = %zx\n", level + 1, (size_t) next_table);
-            current_table[index] = (size_t)next_table | 1;
+        int index = vpn[level];
+        if ((*(page_table + index) & 1) != 1) {
+            // Valid Bit = 0
+            page_table[index] = (size_t)allocate_page() | 1;
         }
+        printf("Allocation %d: Level %d PTE = %zx\n", allocations, level + 1, page_table[index]);
 
-        // Move to the next level table
-        current_table = (size_t*)current_table[index];
-    }
+        page_table = (size_t*)(page_table[index] & PAGE_MASK);
 
-    // Allocate the final physical page if not already done
-    if (current_table[0] == 0) {
-        size_t* physical_page = allocate_page();
-        if (physical_page == NULL) {
-            printf("Failed to allocate physical page\n");
-            return;
-        }
-        //printf("Physical Page: %zx\n", (size_t) physical_page);
-        current_table[0] = (size_t)physical_page | 1;
     }
 }
 
 
+int main() {
+    // 0 pages have been allocated
+    assert(ptbr == 0);
+
+    page_allocate(0x456789abcdef);
+    // 5 pages have been allocated: 4 page tables and 1 data
+    assert(ptbr != 0);
+
+    page_allocate(0x456789abcd00);
+    // no new pages allocated (still 5)
+
+    int *p1 = (int *)translate(0x456789abcd00);
+    *p1 = 0xaabbccdd;
+    short *p2 = (short *)translate(0x456789abcd02);
+    printf("%04hx\n", *p2); // prints "aabb\n"
+
+    assert(translate(0x456789ab0000) == 0xFFFFFFFFFFFFFFFF);
+
+    page_allocate(0x456789ab0000);
+    // 1 new page allocated (now 6; 4 page table, 2 data)
+
+    assert(translate(0x456789ab0000) != 0xFFFFFFFFFFFFFFFF);
+
+    page_allocate(0x456780000000);
+    //2 new pages allocated (now 8; 5 page table, 3 data)
+}
