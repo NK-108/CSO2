@@ -5,7 +5,7 @@ LDFLAGS = -L. -lmlpt
 all: libmlpt.a ptb
 
 libmlpt.a: ptb.o
-	ar rcs libmlpt.a ptb.o
+	ar rcs libmlpt.a ptb.o 
 
 ptb: ptb.o
 	$(CC) $(CFLAGS) ptb.o -o ptb
