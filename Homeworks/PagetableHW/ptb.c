@@ -1,79 +1,61 @@
+#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdalign.h>
+#include <assert.h>
+#include <string.h>
 #include "mlpt.h"
 #include "config.h"
 
 size_t ptbr = 0;
-int page_size;
-int pte_size;
-int pt_size;
-int unused_bits;
-int vpn_size;
-int vpn_bits;
 
-// For Testing Translate
-alignas(4096)
-static size_t testing_page_table[512];
-static void set_testing_ptbr(void) {
-    ptbr = (size_t) &testing_page_table[0];
-}
+#define PAGE_SIZE (1 << POBITS) // number of bytes per page
+#define PAGE_MASK (~(PAGE_SIZE - 1)) 
+#define PTE_SIZE 8 // number of bytes per page table entry
+#define PT_LENGTH (PAGE_SIZE/PTE_SIZE) // number of page table entries
 
-void setup_test() {
-    alignas(4096)
-    static char data_for_page_3[4096];
-    size_t address_of_data_for_page_3_as_integer = (size_t) &data_for_page_3[0];
-    size_t physical_page_number_of_data_for_page_3 = address_of_data_for_page_3_as_integer >> 12;
-        // instead of >> 12, we could have written:
-            // address_of_data_for_page_3_as_integer / 4096
-    size_t page_table_entry_for_page_3 = (
-            // physical page number in upper (64-POBITS) bits
-            (physical_page_number_of_data_for_page_3 << 12)
-        |
-            // valid bit in least significant bit, set to 1
-            1
-    );
-    // assuming testing_page_table initialized as above and ptbr points to it
-    testing_page_table[3] = page_table_entry_for_page_3;
-    printf("Expected Address = %zx\n", &data_for_page_3[0x45]);
-}
+int UNUSED_BITS = 0; // number of unused bits in virtual address
+int VPN_SIZE = 0; // number of bits in complete vpn
+int VPN_BITS = 0; // number of bits for each vpn level
+size_t vpn[LEVELS]; // array of VPNs
+size_t po = 0; // page offset
 
-void set_variables() {
-    page_size = 1 << POBITS;
-    pte_size = 8;
-    pt_size = page_size/pte_size;
+
+void set_vpn(size_t va) {
     
-    int temp = pt_size;
+    int temp = PT_LENGTH;
     int i = 0;
     while (temp != 1) {
         temp >>= 1;
         i += 1;
     }
-    vpn_size = i;
+    VPN_SIZE = i;
+    VPN_BITS = VPN_SIZE * LEVELS;
+    UNUSED_BITS = 64 - VPN_BITS - POBITS;
 
-    vpn_bits = vpn_size * LEVELS;
-    unused_bits = 64 - vpn_bits - POBITS;
+    // Isolate Page Offset
+    po = va & ~PAGE_MASK;
+    printf("Page Offset = %zx\n", po);
+
+    // Isolate Virtual Page Numbers
+    for (int i = 0; i < LEVELS; ++i) {
+        vpn[i] = ((va << UNUSED_BITS) << VPN_SIZE * i) >> (64 - VPN_SIZE);
+        printf("Virtual Page Number %d = %zx\n", i + 1, vpn[i]);
+    }
 }
 
 size_t translate(size_t va) {
     printf("Virtual Address = %zx\n", va);
-    set_variables();
 
-    // Isolate Page Offset
-    size_t po = (va << (64 - POBITS)) >> (64 - POBITS);
-    printf("Page Offset = %zx\n", po);
-
-    // Isolate Virtual Page Numbers
-    size_t vpn[LEVELS];
-    for (int i = 0; i < LEVELS; ++i) {
-        vpn[i] = ((va << unused_bits) << vpn_size * i) >> (64 - vpn_size);
-        printf("Virtual Page Number %d = %zx\n", i + 1, vpn[i]);
+    // initialize variables if needed
+    if (VPN_BITS == 0) {
+        set_vpn(va);
     }
-    
+
     // Perform Translation
     size_t level_base = ptbr;
     size_t pte;
-    for (int i = 0; i < LEVELS; ++i) {
-        pte = *((size_t*) (level_base + (vpn[i] * 8)));
+    for (int level = 0; level < LEVELS; ++level) {
+        pte = *((size_t*) (level_base + (vpn[level] * 8)));
         if ((pte & 1) != 1) {
             // Valid Bit = 0
             return ~0;
@@ -86,10 +68,59 @@ size_t translate(size_t va) {
 
 }
 
-int main(void) {
-    size_t test_address = 0x3045;
-    set_testing_ptbr();
-    setup_test();
-    size_t return_address = translate(test_address);
-    printf("Translated Address = %zx\n", return_address);
+void* allocate_page() {
+    void* ptr = NULL;
+    if (posix_memalign(&ptr, PAGE_SIZE, PAGE_SIZE) != 0) {
+        printf("posix_memalign failed");
+        return NULL;
+    }
+    memset(ptr, 0, PAGE_SIZE);
+    return ptr;
 }
+
+void page_allocate(size_t va) {
+    // Initialize variables if needed
+    if (VPN_BITS == 0) {
+        set_vpn(va);
+    }
+
+    // Allocate the top-level page table if not already done
+    if (ptbr == 0) {
+        ptbr = (size_t)allocate_page();
+    }
+
+    size_t* current_table = (size_t*)ptbr;
+
+    // Iterate through levels
+    for (int level = 0; level < LEVELS; ++level) {
+        size_t index = vpn[level];
+
+        // Check if the next-level table exists
+        if ((current_table[index] & 1) == 0) {
+            // Allocate the next-level page table
+            size_t* next_table = allocate_page();
+            if (next_table == NULL) {
+                printf("Failed to allocate next-level page table\n");
+                return;
+            }
+            //printf("Level %d Allocated = %zx\n", level + 1, (size_t) next_table);
+            current_table[index] = (size_t)next_table | 1;
+        }
+
+        // Move to the next level table
+        current_table = (size_t*)current_table[index];
+    }
+
+    // Allocate the final physical page if not already done
+    if (current_table[0] == 0) {
+        size_t* physical_page = allocate_page();
+        if (physical_page == NULL) {
+            printf("Failed to allocate physical page\n");
+            return;
+        }
+        //printf("Physical Page: %zx\n", (size_t) physical_page);
+        current_table[0] = (size_t)physical_page | 1;
+    }
+}
+
+
