@@ -20,7 +20,7 @@ size_t vpn[LEVELS]; // array of VPNs
 size_t po = 0; // page offset
 int allocations = 0;
 
-void set_vpn(size_t va) {
+void set_var(size_t va) {
     
     int temp = PT_LENGTH;
     int i = 0;
@@ -34,26 +34,28 @@ void set_vpn(size_t va) {
 
     // Isolate Page Offset
     po = va & ~PAGE_MASK;
-    printf("Page Offset = %zx\n", po);
+    //printf("Page Offset = %zx\n", po);
 
     // Isolate Virtual Page Numbers
     for (int i = 0; i < LEVELS; ++i) {
         vpn[i] = ((va << UNUSED_BITS) << VPN_SIZE * i) >> (64 - VPN_SIZE);
-        printf("Virtual Page Number %d = %zx\n", i + 1, vpn[i]);
+        //printf("Virtual Page Number %d = %zx\n", i + 1, vpn[i]);
     }
 }
 
 size_t translate(size_t va) {
-    // initialize variables if needed
-    if (VPN_BITS == 0) {
-        set_vpn(va);
+    // initialize variables 
+    set_var(va);
+
+    if (ptbr == 0) {
+        return ~0;
     }
 
     // Perform Translation
     size_t level_base = ptbr;
     size_t pte;
-    for (int level = 0; level < LEVELS; ++level) {
-        pte = *((size_t*) (level_base + (vpn[level] * 8)));
+    for (int i = 0; i < LEVELS; ++i) {
+        pte = *((size_t*) (level_base + (vpn[i] * 8)));
         if ((pte & 1) != 1) {
             // Valid Bit = 0
             return ~0;
@@ -71,7 +73,7 @@ size_t translate(size_t va) {
 void* allocate_page() {
     void* ptr = NULL;
     if (posix_memalign(&ptr, PAGE_SIZE, PAGE_SIZE) != 0) {
-        printf("posix_memalign failed");
+        //printf("posix_memalign failed");
         return NULL;
     }
     memset(ptr, 0, PAGE_SIZE);
@@ -80,10 +82,8 @@ void* allocate_page() {
 }
 
 void page_allocate(size_t va) {
-    // Initialize variables if needed
-    if (VPN_BITS == 0) {
-        set_vpn(va);
-    }
+    // Initialize variables
+    set_var(va);
 
     // Allocate the top-level page table if not already done
     if (ptbr == 0) {
@@ -130,5 +130,5 @@ int main() {
     assert(translate(0x456789ab0000) != 0xFFFFFFFFFFFFFFFF);
 
     page_allocate(0x456780000000);
-    //2 new pages allocated (now 8; 5 page table, 3 data)
+    // 2 new pages allocated (now 8; 5 page table, 3 data)
 }
