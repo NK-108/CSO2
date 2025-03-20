@@ -2,18 +2,18 @@ CC = gcc
 CFLAGS = -D_XOPEN_SOURCE=700 -Og -g -std=c11 -Wall -pedantic -fsanitize=address 
 LDFLAGS = -L. -lmlpt
 
-all: libmlpt.a ptb
+.PHONY: all clean
 
-libmlpt.a: ptb.o
-	ar rcs libmlpt.a ptb.o 
+all: libmlpt.a mlpt
 
-ptb: ptb.o
-	$(CC) $(CFLAGS) ptb.o -o ptb
+libmlpt.a: mlpt.o
+	ar rcs libmlpt.a mlpt.o 
 
-ptb.o: ptb.c mlpt.h config.h
-	$(CC) $(CFLAGS) -c ptb.c
+mlpt: mlpt.o
+	$(CC) $(CFLAGS) mlpt.o -o mlpt $(LDFLAGS)
+
+mlpt.o: mlpt.c mlpt.h config.h
+	$(CC) $(CFLAGS) -c mlpt.c
 
 clean:
-	rm -f ptb ptb.o libmlpt.a
-
-.PHONY: all clean
+	rm -f mlpt mlpt.o libmlpt.a
