@@ -1,0 +1,78 @@
+README
+
+Introduction
+
+This project implements a multi-level page table (MLPT) system in C. The main features include page allocation and deallocation, along with address translation. The project demonstrates how virtual addresses are translated into physical addresses using multi-level page tables.
+
+Configuration
+
+The configuration file (config.h) contains two key macros:
+
+LEVELS: Defines the number of page table entries (PTEs) used to translate one address. The code functions for integer values between 1 and six inclusive, with the default being 1.
+
+POBITS: Specifies the number of bits used for the page offset. The default value is 12, resulting in a page size of 4KB. The code functions for integer values between 4 and 18 inclusive.
+
+Customization Guidelines
+
+To customize config.h, consider the following:
+
+Adjust LEVELS based on the depth of your page table hierarchy. More levels increase address translation complexity but reduce the size of each page table.
+
+Modify POBITS to change the page size. A higher value increases the page size but reduces the number of pages available.
+
+Deallocation Interface:
+
+To support deallocation of page tables and data pages, the following interface is proposed:
+
+Function Prototype
+
+void page_deallocate(size_t va);
+
+Arguments
+
+va: The virtual address of the page to be deallocated.
+
+Description
+
+The page_deallocate function will:
+
+Identify the page table(s) and data page associated with the given virtual address.
+
+Free the memory associated with each page table level and the data page.
+
+Update the page table entries to mark the page as unallocated.
+
+Implementation Feasibility
+
+The proposed deallocation interface can and has been implemented without altering the existing page_allocate and translate functions. Memory allocated through allocate_page() can be tracked and freed independently.
+
+Known Bugs and Limitations:
+
+Memory leaks may occur if pages are allocated without being freed using the implemented page_deallocate() function.
+
+The translate function returns ~0 when translation fails, which may not be suitable for all applications.
+
+Future Enhancements:
+
+Add reference counting for page tables to avoid premature deallocation.
+
+Improve error handling and reporting.
+
+Big-O Analysis:
+
+Page Allocation: O(L), where L is the number of levels.
+
+Address Translation: O(L), as each level requires one lookup.
+
+Page Deallocation: O(L)
+
+Usage:
+
+Example Code
+
+page_allocate(0x456789abcdef);
+int *p = (int *)translate(0x456789abcd00);
+*p = 42;
+page_deallocate(0x456789abcdef);
+
+

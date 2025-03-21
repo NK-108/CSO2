@@ -29,4 +29,18 @@ size_t translate(size_t va);
  */
 void page_allocate(size_t va);
 
+/*
+* Navigates page tables allocated by page_allocate() to free data page 
+* associated with virtual address 'va', storing table pointers and indices
+* Then travels back up page table hierarchy and checks for empty page tables,
+* which it also frees.
+*/
+void page_deallocate(size_t va);
+
+void set_vpn(size_t va);
+
+void* allocate_page();
+
+int is_page_table_empty(size_t* page_table);
+
 #endif

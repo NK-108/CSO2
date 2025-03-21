@@ -1,0 +1,11 @@
+1. GPL (GNU General Public License):
+   The GPL is a strong copyleft license that requires derivative works to also be open source and distributed under the same license. It ensures that software remains free and open, but it may be restrictive for proprietary use.
+
+2. Apache License 2.0:
+   The Apache License allows users to freely use, modify, and distribute the software, while also providing an explicit grant of patent rights. It is more permissive than the GPL and suitable for both open source and proprietary projects.
+
+3. MIT License:
+   The MIT License is a very permissive open-source license that allows users to do almost anything with the code as long as they include the original copyright notice. It has minimal restrictions and is compatible with both proprietary and open-source projects.
+
+Chosen License:
+The MIT License was chosen because it provides maximum flexibility and minimal restrictions, allowing both open-source and proprietary usage. It is simple, widely adopted, and compatible with many project types.

@@ -32,6 +32,7 @@ size_t translate(size_t va) {
     int po =  va & ~PAGE_MASK;
 
     if (ptbr == 0) {
+        //printf("Translation: Address %zx => Address = %zx\n", va, ~0UL);
         return ~0;
     }
 
@@ -41,6 +42,7 @@ size_t translate(size_t va) {
         int index = vpn[level];
         if ((page_table[index] & 1) != 1) {
             // Valid Bit = 0
+            //printf("Translation: Address %zx => Address = %zx\n", va, ~0UL);
             return ~0;
         } else {
             page_table = (size_t*)(page_table[index] & PAGE_MASK);
@@ -88,6 +90,61 @@ void page_allocate(size_t va) {
     }
 }
 
+// Helper function to check if a page table is empty
+int is_page_table_empty(size_t* page_table) {
+    for (int i = 0; i < PT_LENGTH; ++i) {
+        if ((page_table[i] & 1) == 1) {
+            return 0; // Page table is not empty
+        }
+    }
+    return 1; // Page table is empty
+}
+
+void page_deallocate(size_t va) {
+    set_vpn(va);
+
+    if (ptbr == 0) {
+        // No page tables allocated
+        return;
+    }
+
+    size_t* page_table = (size_t*) ptbr;
+    size_t* tables[LEVELS] = {0};
+    int indices[LEVELS] = {0};
+
+    // Traverse the page table hierarchy
+    for (int level = 0; level < LEVELS; ++level) {
+        int index = vpn[level];
+
+        if ((page_table[index] & 1) != 1) {
+            // Valid Bit = 0, no page to deallocate
+            return;
+        }
+
+        tables[level] = page_table;
+        indices[level] = index;
+        page_table = (size_t*)(page_table[index] & PAGE_MASK);
+    }
+
+    // Deallocate the data page
+    free((void*)page_table);
+    tables[LEVELS - 1][indices[LEVELS - 1]] = 0; // Invalidate the PTE
+
+    // Recursively deallocate empty page table levels
+    for (int level = LEVELS - 1; level >= 0; --level) {
+        if (is_page_table_empty(tables[level])) {
+            free((void*)tables[level]);
+            if (level == 0) {
+                ptbr = 0; // Reset root if the top-level page table is freed
+                break;
+            }
+            tables[level - 1][indices[level - 1]] = 0; // Invalidate the parent PTE
+        } else {
+            break;
+        }
+    }
+}
+
 int main() {
     // 0 pages have been allocated
     assert(ptbr == 0);
@@ -114,4 +171,9 @@ int main() {
 
     page_allocate(0x456780000000);
     // 2 new pages allocated (now 8; 5 page table, 3 data)
+
+    translate(0x456789abcdef);
+    page_deallocate(0x456789abcdef);
+    translate(0x456789abcdef);
+    translate(0x456789ab0000);
 }
