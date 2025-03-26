@@ -71,9 +71,9 @@ void prevent_optimizations_based_on_knowing_array_values() {
 }
 
 int main() {
-    const int MAX = 1048568;
-    const int SKIP = 4;
-    const int ITERS = 64000000;
+    const int MAX = 12*1024;
+    const int SKIP = (0b1 << 15)/4;
+    const int ITERS = 20000000;
 
 /* these two lines tell Clang (if used to compile this) not to try to 
    perform optimizations on this loop that are likely to make the access
@@ -84,12 +84,15 @@ int main() {
     /* This loop sets up global_array[i] for the next loop.
      * Most of the accesses to the array are likely to happen in the second loop. */
     for (int i = 0; i < MAX; ++i) {
-        global_array[i] = (i+SKIP) % (MAX);
+       global_array[i] = (i+SKIP) % (MAX);
     }
+    // global_array[0] = 0 + (1 << 6);
+    // global_array[0 + (1 << 6)] = 0 + (2 << 6);
+    // global_array[0 + (2 << 6)] = 0;
+    
     prevent_optimizations_based_on_knowing_array_values();
     int j = 0;
 
-    
 #pragma clang loop vectorize(disable)
 #pragma clang loop interleave(disable)
 
