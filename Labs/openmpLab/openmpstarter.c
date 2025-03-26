@@ -17,77 +17,54 @@ double geomean(unsigned char *s, size_t n) {
 }
 
 double geomeanEVEN_ATOMIC(unsigned char *s, size_t n) {
-    double *answer = malloc(n * sizeof(double));
+    double answer = 0;
     
-    // Even Split Map
+    // Even Split Map - Atomic Reduction
     #pragma omp parallel for
     for(int i=0; i<n; i+=1) {
-        if (s[i] > 0) answer[i] = log(s[i]) / n;
+        if (s[i] > 0) {
+            #pragma omp atomic update
+            answer += log(s[i]) / n;
+        }
     }
-
-    // Atomic Reduction
-    double result = 0;
-    #pragma omp parallel for
-    for(int i=0; i<n; i+=1) {
-        #pragma omp atomic update
-        result += answer[i];
-    }
-
-    free(answer);
-    return exp(result);
+    return exp(answer);
 }
 
 double geomeanEVEN_MtF(unsigned char *s, size_t n) {
-    double *answer = malloc(n * sizeof(double));
+    double answer = 0;
     
-    // Even Split Map
-    #pragma omp parallel for
-    for(int i=0; i<n; i+=1) {
-        if (s[i] > 0) answer[i] = log(s[i]) / n;
-    }
-
-    // Many-to-Few Reduction
-    double result = 0;
+    // Even Split Map - MtF Reduction
     #pragma omp parallel
     {
-        double local_result = 0;
+        double local_answer = 0;
         #pragma omp for nowait
         for(int i=0; i<n; i+=1) {
-            local_result += answer[i];
+            if (s[i] > 0) local_answer += log(s[i]) / n;
         }
 
         #pragma omp atomic update
-        result += local_result;
+        answer += local_answer;
     }
-
-    free(answer);
-    return exp(result);
+    return exp(answer);
 }
 
 double geomeanEVEN_BUILTIN(unsigned char *s, size_t n) {
-    double *answer = malloc(n * sizeof(double));
+    double answer = 0;
     
-    // Even Split Map
-    #pragma omp parallel for
+    // Even Split Map - Built-In Reduction
+    #pragma omp parallel for reduction(+:answer)
     for(int i=0; i<n; i+=1) {
-        if (s[i] > 0) answer[i] = log(s[i]) / n;
+        if (s[i] > 0) {
+            answer += log(s[i]) / n;
+        }
     }
-
-    // Built-In Reduction
-    double result = 0;
-    #pragma omp parallel for reduction(op:result)
-    for(int i=0; i<n; i+=1) {
-        result += answer[i];
-    }
-
-    free(answer);
-    return exp(result);
+    return exp(answer);
 }
 
 double geomeanQUEUE_ATOMIC(unsigned char *s, size_t n) {
-    double *answer = malloc(n * sizeof(double));
+    double answer = 0;
 
-    // Task Queue Map
+    // Task Queue Map - Atomic Reduction
     int j = 0;
     #pragma omp parallel
     while (1) {
@@ -95,92 +72,52 @@ double geomeanQUEUE_ATOMIC(unsigned char *s, size_t n) {
         #pragma omp atomic capture
         i = j++;
         if (i >= n) break;
-        if (s[i] > 0) answer[i] = log(s[i]) / n;
+        if (s[i] > 0) {
+            #pragma omp atomic update
+            answer += log(s[i]) / n;
+        }
     }
-
-    // Atomic Reduction
-    double result = 0;
-    j = 0;
-    #pragma omp parallel 
-    while (1) {
-        int i;
-        #pragma omp atomic capture
-        i = j++;
-        if (i >= n) break;
-        #pragma omp atomic update
-        result += answer[i];
-    }
-
-    free(answer);
-    return exp(result);
+    return exp(answer);
 }
 
 double geomeanQUEUE_BUILTIN(unsigned char *s, size_t n) {
-    double *answer = malloc(n * sizeof(double));
+    double answer = 0;
 
-    // Task Queue Map
+    // Task Queue Map - Built-In Reduction
     int j = 0;
-    #pragma omp parallel
+    #pragma omp parallel reduction(+:answer)
     while (1) {
         int i;
         #pragma omp atomic capture
         i = j++;
         if (i >= n) break;
-        if (s[i] > 0) answer[i] = log(s[i]) / n;
+        if (s[i] > 0) answer += log(s[i]) / n;
     }
-
-    // Built-In Reduction
-    double result = 0;
-    j = 0;
-    #pragma omp parallel reduction(op:result)
-    while (1) {
-        int i;
-        #pragma omp atomic capture
-        i = j++;
-        if (i >= n) break;
-        result += answer[i];
-    }
-
-    free(answer);
-    return exp(result);
+    return exp(answer);
 }
 
 double geomeanQUEUE_MtF(unsigned char *s, size_t n) {
-    double *answer = malloc(n * sizeof(double));
+    double answer = 0;
 
-    // Task Queue Map
+    // Task Queue Map - MtF Reduction
     int j = 0;
     #pragma omp parallel
-    while (1) {
-        int i;
-        #pragma omp atomic capture
-        i = j++;
-        if (i >= n) break;
-        if (s[i] > 0) answer[i] = log(s[i]) / n;
-    }
-
-    // Many-to-Few Reduction
-    double result = 0;
-    j = 0;
-    #pragma omp parallel 
     {
-        double local_result = 0;
-        #pragma omp for nowait
+        double local_answer = 0;
+        #pragma omp nowait
         while (1) {
             int i;
             #pragma omp atomic capture
             i = j++;
             if (i >= n) break;
-            local_result += answer[i];
+            if (s[i] > 0) local_answer += log(s[i]) / n;
         }
 
         #pragma omp atomic update
-        result += local_result;
+        answer += local_answer;
     }
     
-
-    free(answer);
-    return exp(result);
+    return exp(answer);
 }
 
 /// nanoseconds that have elapsed since 1970-01-01 00:00:00 UTC
@@ -214,13 +151,13 @@ int main(int argc, char *argv[]) {
 
     // step 2: invoke and time the geometric mean function
     long long t0 = nsecs();
-    double answer = geomean((unsigned char*) s,n);
-    // double answer = geomeanEVEN_ATOMIC((unsigned char*) s,n);
-    // double answer = geomeanEVEN_BUILTIN((unsigned char*) s,n);
-    // double answer = geomeanEVEN_MtF((unsigned char*) s,n);
-    // double answer = geomeanQUEUE_ATOMIC((unsigned char*) s,n);
-    // double answer = geomeanQUEUE_BUILTIN((unsigned char*) s,n);
-    // double answer = geomeanEVEN_MtF((unsigned char*) s,n);
+    // double answer = geomean((unsigned char*) s,n);               // 1047204564 ns
+    // double answer = geomeanEVEN_ATOMIC((unsigned char*) s,n);    // 210079399 ns 
+    // double answer = geomeanEVEN_BUILTIN((unsigned char*) s,n);   // 18904545 ns
+    double answer = geomeanEVEN_MtF((unsigned char*) s,n);       // 15978161 ns
+    // double answer = geomeanQUEUE_ATOMIC((unsigned char*) s,n);   // 492206916 ns
+    // double answer = geomeanQUEUE_BUILTIN((unsigned char*) s,n);  // 176334968 ns
+    // double answer = geomeanQUEUE_MtF((unsigned char*) s,n);       // 17415502 ns 
     long long t1 = nsecs();
 
     free(s);
