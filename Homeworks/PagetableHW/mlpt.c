@@ -128,12 +128,14 @@ void page_deallocate(size_t va) {
 
     // Deallocate the data page
     free((void*)page_table);
+    allocations -= 1;
     tables[LEVELS - 1][indices[LEVELS - 1]] = 0; // Invalidate the PTE
 
     // Recursively deallocate empty page table levels
     for (int level = LEVELS - 1; level >= 0; --level) {
         if (is_page_table_empty(tables[level])) {
             free((void*)tables[level]);
+            allocations -= 1;
             if (level == 0) {
                 ptbr = 0; // Reset root if the top-level page table is freed
                 break;
@@ -145,35 +147,35 @@ void page_deallocate(size_t va) {
     }
 }
 
-int main() {
-    // 0 pages have been allocated
-    assert(ptbr == 0);
+// int main() {
+//     // 0 pages have been allocated
+//     assert(ptbr == 0);
 
-    page_allocate(0x456789abcdef);
-    // 5 pages have been allocated: 4 page tables and 1 data
-    assert(ptbr != 0);
+//     page_allocate(0x456789abcdef);
+//     // 5 pages have been allocated: 4 page tables and 1 data
+//     assert(ptbr != 0);
 
-    page_allocate(0x456789abcd00);
-    // no new pages allocated (still 5)
+//     page_allocate(0x456789abcd00);
+//     // no new pages allocated (still 5)
 
-    int *p1 = (int *)translate(0x456789abcd00);
-    *p1 = 0xaabbccdd;
-    short *p2 = (short *)translate(0x456789abcd02);
-    printf("%04hx\n", *p2); // prints "aabb\n"
+//     int *p1 = (int *)translate(0x456789abcd00);
+//     *p1 = 0xaabbccdd;
+//     short *p2 = (short *)translate(0x456789abcd02);
+//     printf("%04hx\n", *p2); // prints "aabb\n"
 
-    assert(translate(0x456789ab0000) == 0xFFFFFFFFFFFFFFFF);
+//     assert(translate(0x456789ab0000) == 0xFFFFFFFFFFFFFFFF);
 
-    page_allocate(0x456789ab0000);
-    // 1 new page allocated (now 6; 4 page table, 2 data)
+//     page_allocate(0x456789ab0000);
+//     // 1 new page allocated (now 6; 4 page table, 2 data)
 
 
-    assert(translate(0x456789ab0000) != 0xFFFFFFFFFFFFFFFF);
+//     assert(translate(0x456789ab0000) != 0xFFFFFFFFFFFFFFFF);
 
-    page_allocate(0x456780000000);
-    // 2 new pages allocated (now 8; 5 page table, 3 data)
+//     page_allocate(0x456780000000);
+//     // 2 new pages allocated (now 8; 5 page table, 3 data)
 
-    translate(0x456789abcdef);
-    page_deallocate(0x456789abcdef);
-    translate(0x456789abcdef);
-    translate(0x456789ab0000);
-}
+//     translate(0x456789abcdef);
+//     page_deallocate(0x456789abcdef);
+//     translate(0x456789abcdef);
+//     translate(0x456789ab0000);
+// }

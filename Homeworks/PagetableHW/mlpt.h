@@ -37,10 +37,19 @@ void page_allocate(size_t va);
 */
 void page_deallocate(size_t va);
 
+/*
+* Given virtual address 'va', calculates vpns for all levels and stores in global int array.
+*/
 void set_vpn(size_t va);
 
+/*
+* Allocates a single page using posix_memalign(), sets all data to 0, and increments global allocation counter.
+*/
 void* allocate_page();
 
+/*
+* Checks the contents of page table passed by 'page_table', returns 1 if empty, 0 if not.
+*/
 int is_page_table_empty(size_t* page_table);
 
 #endif
