@@ -66,8 +66,53 @@ int tlb_peek(size_t va) {
     return 0;  // Not found
 }
 
-// STUB FOR TESTING
+/** Perform a TLB lookup, updating LRU order, and inserting if necessary */
 size_t tlb_translate(size_t va) {
+    size_t set_index = get_set_index(va);
+    printf("VA = %zx, Index = %zx", va, set_index);
+    TLBSet *set = &tlb[set_index];
+    size_t vpn = va >> POBITS;
+
+    // Check if the VA is already in the TLB
+    for (int i = 0; i < WAYS; i++) {
+        if (set->entries[i].valid && set->entries[i].vpn == vpn) {
+            update_lru(set, i);
+            return set->entries[i].pa;
+        }
+    }
+
+    // Not found, get the translation
+    size_t pa = translate(va);
+    if (pa == (size_t)-1) {
+        return (size_t)-1;  // Do not update TLB if translation fails
+    }
+
+    // Find an invalid entry or the least recently used one
+    int lru_index = -1;
+    int max_lru_rank = -1;
+    for (int i = 0; i < WAYS; i++) {
+        if (!set->entries[i].valid) {
+            lru_index = i;
+            break;
+        }
+        if (set->entries[i].lru_rank > max_lru_rank) {
+            max_lru_rank = set->entries[i].lru_rank;
+            lru_index = i;
+        }
+    }
+
+    // Replace the selected entry
+    set->entries[lru_index].valid = 1;
+    set->entries[lru_index].vpn = vpn;
+    set->entries[lru_index].pa = pa;
+
+    // Update LRU tracking
+    update_lru(set, lru_index);
+
+    return pa;
+}
+
+size_t translate(size_t va) {
     if (va < 0x1234000)
         return va + 0x20000;
     else if (va > 0x2000000 && va < 0x2345000)
