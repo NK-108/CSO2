@@ -27,4 +27,4 @@ int tlb_peek(size_t va);
  */
 size_t tlb_translate(size_t va);
 
-#endif TLB_H
+#endif

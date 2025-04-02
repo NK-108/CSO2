@@ -9,12 +9,13 @@
 #define SETS 16
 #define ENTRIES (WAYS * SETS)
 #define INDEX_BITS (int)log2(SETS)
+#define PAGE_MASK ((1 << POBITS) - 1)
 #define INDEX_MASK (((1 << (INDEX_BITS + POBITS)) - 1) & (((1 << INDEX_BITS) - 1) << POBITS))
 #define TAG_MASK ~(((1 << (INDEX_BITS + POBITS)) - 1))
 
 typedef struct {
     int valid;
-    size_t vpn;
+    size_t tag;
     size_t pa;
     int lru_rank;  // 1 = most recently used, 4 = least recently used
 } TLBEntry;
@@ -25,17 +26,15 @@ typedef struct {
 
 static TLBSet tlb[SETS];
 
-/** Helper function to get the set index from a virtual address */
-static size_t get_set_index(size_t va) {
-    return (va & INDEX_MASK) >> POBITS; 
-}
-
 /** Helper function to update LRU ranking in a set */
 static void update_lru(TLBSet *set, int accessed_index) {
     int old_rank = set->entries[accessed_index].lru_rank;
+    if (old_rank == 0) {
+        old_rank = 4;
+    }
 
     for (int i = 0; i < WAYS; i++) {
-        if (set->entries[i].valid && set->entries[i].lru_rank < old_rank) {
+        if (set->entries[i].valid && set->entries[i].lru_rank <= old_rank) {
             set->entries[i].lru_rank++;  // Move older entries down
         }
     }
@@ -54,12 +53,16 @@ void tlb_clear() {
  * etc.
  */
 int tlb_peek(size_t va) {
-    size_t set_index = get_set_index(va);
+    size_t set_index = (va & INDEX_MASK) >> POBITS;
     TLBSet *set = &tlb[set_index];
-    size_t vpn = va >> POBITS;
+    size_t tag = va >> (INDEX_BITS + POBITS);
+    size_t po = va & PAGE_MASK;
+    printf("PEEK => Virtual Address = 0x%zx, Index = 0x%zx, Tag = 0x%zx, Page Offset = 0x%zx\n", va, set_index, tag, po);
+
 
     for (int i = 0; i < WAYS; i++) {
-        if (set->entries[i].valid && set->entries[i].vpn == vpn) {
+        if (set->entries[i].valid && set->entries[i].tag == tag) {
+            //printf("Found Entry for VA = %zx in WAY = %d\n", va, i);
             return set->entries[i].lru_rank;
         }
     }
@@ -68,22 +71,24 @@ int tlb_peek(size_t va) {
 
 /** Perform a TLB lookup, updating LRU order, and inserting if necessary */
 size_t tlb_translate(size_t va) {
-    size_t set_index = get_set_index(va);
-    printf("VA = %zx, Index = %zx", va, set_index);
+    size_t set_index = (va & INDEX_MASK) >> POBITS;
     TLBSet *set = &tlb[set_index];
-    size_t vpn = va >> POBITS;
+    size_t tag = va >> (POBITS + INDEX_BITS);
+    size_t po = va & PAGE_MASK;
+    printf("TRANSLATE => Virtual Address = 0x%zx, Index = 0x%zx, Tag = 0x%zx, Page Offset = 0x%zx => \n", va, set_index, tag, po);
 
     // Check if the VA is already in the TLB
     for (int i = 0; i < WAYS; i++) {
-        if (set->entries[i].valid && set->entries[i].vpn == vpn) {
+        if (set->entries[i].valid && set->entries[i].tag == tag) {
             update_lru(set, i);
-            return set->entries[i].pa;
+            return (set->entries[i].pa & ~PAGE_MASK) + po;
         }
     }
 
     // Not found, get the translation
-    size_t pa = translate(va);
-    if (pa == (size_t)-1) {
+    size_t translation = translate(va & ~PAGE_MASK);
+    size_t pa = translation + po;
+    if (translation == (size_t)-1) {
         return (size_t)-1;  // Do not update TLB if translation fails
     }
 
@@ -103,7 +108,7 @@ size_t tlb_translate(size_t va) {
 
     // Replace the selected entry
     set->entries[lru_index].valid = 1;
-    set->entries[lru_index].vpn = vpn;
+    set->entries[lru_index].tag = tag;
     set->entries[lru_index].pa = pa;
 
     // Update LRU tracking
@@ -149,4 +154,78 @@ int main (void) {
     assert(tlb_peek(0x0000000) == 0);
     assert(tlb_translate(0) == 0x20000);
     assert(tlb_peek(0) == 1);
-}
+
+    tlb_clear();
+    assert(tlb_translate(0x0001200) == 0x0021200);
+    assert(tlb_translate(0x2101200) == 0x2201200);
+    assert(tlb_translate(0x0801200) == 0x0821200);
+    assert(tlb_translate(0x2301200) == 0x2401200);
+    assert(tlb_translate(0x0501200) == 0x0521200);
+    assert(tlb_translate(0x0A01200) == 0x0A21200);
+    assert(tlb_peek(0x0001200) == 0);
+    assert(tlb_peek(0x2101200) == 0);
+    assert(tlb_peek(0x2301200) == 3);
+    assert(tlb_peek(0x0501200) == 2);
+    assert(tlb_peek(0x0801200) == 4);
+    assert(tlb_peek(0x0A01200) == 1);
+    assert(tlb_translate(0x2301800) == 0x2401800);
+    assert(tlb_peek(0x0001000) == 0);
+    assert(tlb_peek(0x2101000) == 0);
+    assert(tlb_peek(0x2301000) == 1);
+    assert(tlb_peek(0x0501000) == 3);
+    assert(tlb_peek(0x0801000) == 4);
+    assert(tlb_peek(0x0A01000) == 2);
+    for (int i = 0; i < 16; i += 1) {
+        if (i != 1) {
+            assert(tlb_translate(0x400000 + (i << 12)) == (0x420000 + (i << 12)));
+            assert(tlb_translate(0x500000 + (i << 12)) == (0x520000 + (i << 12)));
+            assert(tlb_translate(0x600000 + (i << 12)) == (0x620000 + (i << 12)));
+            assert(tlb_translate(0x700000 + (i << 12)) == (0x720000 + (i << 12)));
+            assert(tlb_translate(0x800000 + (i << 12)) == (0x820000 + (i << 12)));
+            assert(tlb_peek(0x800000 + (i << 12)) == 1);
+            assert(tlb_peek(0x400000 + (i << 12)) == 0);
+            assert(tlb_peek(0x0001000) == 0);
+            assert(tlb_peek(0x2101000) == 0);
+            assert(tlb_peek(0x2301000) == 1);
+            assert(tlb_peek(0x0501000) == 3);
+            assert(tlb_peek(0x0801000) == 4);
+            assert(tlb_peek(0x0A01000) == 2);
+        }
+    }
+    tlb_clear();
+    assert(tlb_peek(0x301000) == 0);
+    assert(tlb_peek(0x501000) == 0);
+    assert(tlb_peek(0x801000) == 0);
+    assert(tlb_peek(0xA01000) == 0);
+    assert(tlb_translate(0xA01200) == 0xA21200);
+
+    tlb_clear();
+    assert(tlb_translate(0xA0001200) == -1);
+    assert(tlb_peek(0xA0001000) == 0);
+    assert(tlb_translate(0x1200) == 0x21200);
+    assert(tlb_peek(0xA0001200) == 0);
+    assert(tlb_peek(0x1000) == 1);
+    assert(tlb_translate(0xA0001200) == -1);
+    assert(tlb_translate(0xB0001200) == -1);
+    assert(tlb_translate(0xC0001200) == -1);
+    assert(tlb_translate(0xD0001200) == -1);
+    assert(tlb_translate(0xE0001200) == -1);
+    assert(tlb_peek(0x1000) == 1);
+    assert(tlb_translate(0x1200) == 0x21200);
+
+    tlb_clear();
+    assert(tlb_translate(0x0001200) == 0x0021200);
+    assert(tlb_translate(0x2101200) == 0x2201200);
+    assert(tlb_translate(0x0801200) == 0x0821200);
+    assert(tlb_translate(0x2301200) == 0x2401200);
+    tlb_clear();
+    assert(tlb_translate(0x2101200) == 0x2201200);
+    assert(tlb_translate(0x0001200) == 0x0021200);
+    assert(tlb_translate(0x2101200) == 0x2201200);
+    assert(tlb_translate(0x2301200) == 0x2401200);
+    assert(tlb_translate(0x0011200) == 0x0031200);
+    assert(tlb_peek(0x0001200) == 4);
+    assert(tlb_peek(0x2101200) == 3);
+    assert(tlb_peek(0x2301200) == 2);
+    assert(tlb_peek(0x0011200) == 1);
+}   
