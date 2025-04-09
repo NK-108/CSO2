@@ -44,6 +44,6 @@ void waitForAllTimeoutsAndMessagesThenExit(void);
 int checksum(int len, char *data);
 void resend_last_ACK(void *arg);
 void send_ACK(unsigned char seq);
-void send_GET(void *arg);
+void send_GET();
 
 #endif

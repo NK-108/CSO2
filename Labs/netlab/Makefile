@@ -6,6 +6,9 @@ LDFLAGS = -L. -lnetsim
 
 all: netlab
 
+orig: netlab_orig.o
+	$(CC) netlab_orig.o -o netlab_orig $(LDFLAGS) 
+
 netlab: netlab.o
 	$(CC) netlab.o -o netlab $(LDFLAGS) 
 
@@ -14,4 +17,4 @@ netlab: netlab.o
 
 
 clean:
-	rm -f *.o netlab
+	rm -f *.o netlab netlab_orig

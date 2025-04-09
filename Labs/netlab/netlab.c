@@ -6,11 +6,11 @@ int total_packets = 0;
 char **packet_data = NULL;      // array of pointers to data
 int *packet_lens = NULL;        // array of lengths
 int pending_timeout = -1;       // to clear/restart timeout
-char requested_msg_number = '0';  // set from argv[1]
+char req_msg_num = '0';  // set from argv[1]
 
-void send_GET(void *arg) {
+void send_GET() {
     char data[5];
-    data[1] = 'G'; data[2] = 'E'; data[3] = 'T'; data[4] = requested_msg_number;
+    data[1] = 'G'; data[2] = 'E'; data[3] = 'T'; data[4] = req_msg_num;
     data[0] = checksum(5, data);
     send(5, data);
     pending_timeout = setTimeout(send_GET, 1000, NULL);
@@ -25,7 +25,7 @@ void send_ACK(unsigned char seq) {
 
 void resend_last_ACK(void *arg) {
     if (last_received_seq == 0)
-        send_GET(NULL);
+        send_GET();
     else
         send_ACK(last_received_seq);
     pending_timeout = setTimeout(resend_last_ACK, 1000, NULL);
@@ -75,7 +75,9 @@ void recvd(size_t len, void* _data) {
     // ACK and restart timeout
     if (pending_timeout > 0) clearTimeout(pending_timeout);
     send_ACK(last_received_seq);
-    pending_timeout = setTimeout(resend_last_ACK, 1000, NULL);
+    if (last_received_seq != total) {
+        pending_timeout = setTimeout(resend_last_ACK, 1000, NULL);
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -85,8 +87,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    requested_msg_number = argv[1][0];
-    send_GET(NULL);
+    req_msg_num = argv[1][0];
+    send_GET(req_msg_num);
 
     waitForAllTimeoutsAndMessagesThenExit();
 }
