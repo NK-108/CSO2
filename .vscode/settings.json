@@ -3,7 +3,8 @@
         "my_system.h": "c",
         "gettimings.h": "c",
         "time.h": "c",
-        "stdalign.h": "c"
+        "stdalign.h": "c",
+        "pthread.h": "c"
     },
     "makefile.makefilePath": "C:\\Users\\super\\GitRepos\\CSO2\\Homeworks\\PagetableHW\\Makefile",
     "makefile.makePath": "C:\\Program Files (x86)\\GnuWin32\\bin"
