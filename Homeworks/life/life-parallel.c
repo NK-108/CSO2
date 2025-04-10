@@ -79,8 +79,8 @@ void simulate_life_parallel(int threads, LifeBoard *state, int steps) {
     task_description tasks[threads];
 
     for (int i = 0; i < threads; i++) {
-        tasks[i].y1 = i * step;
-        tasks[i].y2 = (i + 1) * step;
+        (i == 0) ? (tasks[i].y1 = (i * step) + 1) : (tasks[i].y1 = i * step);
+        (i == threads - 1) ? (tasks[i].y2 = (i * step) - 1) : (tasks[i].y2 = i * step);
         tasks[i].steps = steps;
         tasks[i].barrier_ptr = &barrier;
         tasks[i].odd_state_ptr = odd_state;
