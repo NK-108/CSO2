@@ -33,8 +33,8 @@ void forward_with_additional(struct message *message) {
 int count0 = 0;
 void forward_attack_0(struct message *message) {
     if (message->to == 'B') {
-        strcpy(message->data, "PAY $10000438 TO M");
-        message->data_size = strlen("PAY $10000438 TO M");
+        strcpy(message->data, "PAY $10001438 TO M");
+        message->data_size = strlen("PAY $10001438 TO M");
         if (count0 == 0) {
             send_message(message);
         }
@@ -52,7 +52,7 @@ void forward_attack_1(struct message *message) {
     if (message->to == 'B') {
         if (count0 == 0) {
             send_message(new_message('A', 'B', 
-                "PAY $10000438 TO M", 
+                "PAY $10001438 TO M", 
                 true, false));
         }
         count0 += 1;
